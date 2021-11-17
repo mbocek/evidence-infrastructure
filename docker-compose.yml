@@ -1,0 +1,58 @@
+version: "3.9"
+
+services:
+  traefik:
+    image: traefik:2.5.4
+    container_name: traefik
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+      - "./traefik.yml:/traefik.yml:ro"
+
+  db:
+    image: postgres:14-alpine
+    container_name: postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=evidence
+      - POSTGRES_PASSWORD=${DB_EVIDENCE_PWD}
+      - POSTGRES_DB=evidence
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - "5432:5432"
+    volumes:
+      - "${HOME}/evidence/postgresql/data:/var/lib/postgresql/data"
+      - "./init.db:/docker-entrypoint-initdb.d"
+
+  evidence-computer:
+    image: docker.io/mbocek/evidence-computer:latest
+    container_name: evidence-computer
+    depends_on:
+      - db
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/evidence
+      - SPRING_DATASOURCE_USERNAME=evidence
+      - SPRING_DATASOURCE_PASSWORD=${DB_EVIDENCE_PWD}
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.evidence-computer.entrypoints=web"
+      - "traefik.http.routers.evidence-computer.rule=Host(`ui.$LOCAL_DOMAIN`) && PathPrefix(`/api`)"
+      - "traefik.http.services.evidence-computer.loadbalancer.server.port=8080"
+
+  evidence-ui:
+    image: docker.io/mbocek/evidence-ui:main
+    container_name: evidence-ui
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.evidence-ui.entrypoints=web"
+      - "traefik.http.routers.evidence-ui.rule=Host(`ui.$LOCAL_DOMAIN`)"
+      - "traefik.http.services.evidence-ui.loadbalancer.server.port=5000"
+
+networks:
+  default:
+    external:
+      name: $DEFAULT_NETWORK
+
