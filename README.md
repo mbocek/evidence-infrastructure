@@ -5,6 +5,7 @@ Create .env file with content:
 LOCAL_DOMAIN=evidence.lan
 DEFAULT_NETWORK=evidence_net
 DB_EVIDENCE_PWD=evidence
+DB_EVIDENCE_DATA=/var/lib/postgresql/evidence/data
 ```
 Run commands for initialisation of the environment:
 ```
